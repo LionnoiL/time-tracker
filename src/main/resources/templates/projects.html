@@ -292,20 +292,20 @@
         }
     }
 
-    async function syncTimersWithServer() {
-        try {
-            const response = await fetch('/api/projects');
-            if (!response.ok) return;
-            const projects = await response.json();
+        async function syncTimersWithServer() {
+            try {
+                const response = await fetch('/api/projects');
+                if (!response.ok) return;
+                const projects = await response.json();
 
-            projects.forEach(project => {
-                const isRunningOnServer = project.startTime !== null;
-                const isRunningLocally = !!activeTimers[project.id];
+                projects.forEach(project => {
+                    const isRunningOnServer = project.startTime !== null;
+                    const isRunningLocally = !!activeTimers[project.id];
 
-                if (!isRunningOnServer && isRunningLocally) {
-                    stopLocalVisualDisplay(project.id);
-                } else if (isRunningOnServer && !isRunningLocally) {
-                    let startTimeStr = project.startTime;
+                    if (!isRunningOnServer && isRunningLocally) {
+                        stopLocalVisualTimer(project.id, project);
+                    } else if (isRunningOnServer && !isRunningLocally) {
+                        let startTimeStr = project.startTime;
                     if (!startTimeStr.includes('Z') && !startTimeStr.includes('+')) {
                         startTimeStr += 'Z';
                     }
