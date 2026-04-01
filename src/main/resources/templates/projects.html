@@ -261,7 +261,6 @@
     function stopLocalVisualTimer(projectId, updatedProject) {
         stopLocalVisualDisplay(projectId);
 
-        // Оновлення даних у таблиці
         const minutesCell = document.getElementById(`minutes-${projectId}`);
         const displayCell = document.getElementById(`display-time-${projectId}`);
         const costCell = document.getElementById(`cost-${projectId}`);
@@ -306,7 +305,11 @@
                 if (!isRunningOnServer && isRunningLocally) {
                     stopLocalVisualDisplay(project.id);
                 } else if (isRunningOnServer && !isRunningLocally) {
-                    startLocalVisualTimer(project.id, new Date(project.startTime));
+                    let startTimeStr = project.startTime;
+                    if (!startTimeStr.includes('Z') && !startTimeStr.includes('+')) {
+                        startTimeStr += 'Z';
+                    }
+                    startLocalVisualTimer(project.id, new Date(startTimeStr));
                 }
             });
         } catch (e) {
