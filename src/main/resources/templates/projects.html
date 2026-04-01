@@ -111,7 +111,8 @@
                 </thead>
                 <tbody>
                 <th:block th:each="project : ${projects}">
-                    <tr th:id="'project-row-' + ${project.id}">
+                    <tr th:id="'project-row-' + ${project.id}" 
+    th:data-start-time="${project.startTime}"> <!-- Додаємо час старту в атрибут -->
                         <td th:text="${project.id}">1</td>
                         <td class="fw-bold">
                             <span th:text="${project.name}">Проект</span>
@@ -147,18 +148,19 @@
 
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <button class="btn btn-success btn-sm btn-timer"
+                                    <button th:classappend="${project.startTime != null} ? 'd-none' : ''"
+                                            class="btn btn-success btn-sm btn-timer"
                                             th:id="'start-btn-' + ${project.id}"
                                             th:onclick="'startTimer(' + ${project.id} + ')'">Старт
                                     </button>
-                                    <button class="btn btn-danger btn-sm d-none btn-timer"
+                                    <button th:classappend="${project.startTime == null} ? 'd-none' : ''"
+                                            class="btn btn-danger btn-sm btn-timer"
                                             th:id="'stop-btn-' + ${project.id}"
                                             th:onclick="'stopTimer(' + ${project.id} + ')'">Стоп
                                     </button>
-
-
-                                    <span th:id="'timer-display-' + ${project.id}" class="ms-2 font-monospace"></span>
-
+                                    <span th:id="'timer-display-' + ${project.id}" 
+                                          th:classappend="${project.startTime != null} ? 'timer-active' : ''"
+                                          class="ms-2 font-monospace"></span>
                                 </div>
 
                                 <button class="btn btn-outline-secondary btn-sm ms-3"
@@ -189,7 +191,121 @@
 
 <script>
     const activeTimers = {};
-    let currentActiveProjectId = null;
+
+    window.onload = function() {
+        document.querySelectorAll('[data-start-time]').forEach(row => {
+            const startTimeStr = row.getAttribute('data-start-time');
+            if (startTimeStr && startTimeStr !== "") {
+                const projectId = row.id.replace('project-row-', '');
+                startLocalVisualTimer(projectId, new Date(startTimeStr));
+            }
+        });
+
+        setInterval(syncTimersWithServer, 10000);
+    };
+
+    async function startTimer(projectId) {
+        Object.keys(activeTimers).forEach(id => {
+            if (id != projectId) stopLocalVisualDisplay(id);
+        });
+
+        const response = await fetch(`/api/projects/${projectId}/start`, { method: 'PATCH' });
+        if (response.ok) {
+            const project = await response.json();
+            startLocalVisualTimer(projectId, new Date(project.startTime));
+            syncTimersWithServer(); 
+            updateDashboard();
+        }
+    }
+
+    async function stopTimer(projectId) {
+        const response = await fetch(`/api/projects/${projectId}/stop`, { method: 'PATCH' });
+        if (response.ok) {
+            const updatedProject = await response.json();
+            stopLocalVisualTimer(projectId, updatedProject);
+        }
+    }
+
+    function startLocalVisualTimer(projectId, startTime) {
+        const display = document.getElementById(`timer-display-${projectId}`);
+        const startBtn = document.getElementById(`start-btn-${projectId}`);
+        const stopBtn = document.getElementById(`stop-btn-${projectId}`);
+
+        if (startBtn) startBtn.classList.add('d-none');
+        if (stopBtn) stopBtn.classList.remove('d-none');
+        if (display) {
+            display.classList.add('timer-active');
+            display.innerText = '00:00';
+        }
+
+        activeTimers[projectId] = {
+            startTime: startTime,
+            intervalId: setInterval(() => {
+                const diffSeconds = Math.floor((new Date() - startTime) / 1000);
+                const mins = Math.floor(diffSeconds / 60);
+                const secs = diffSeconds % 60;
+                if (display) {
+                    display.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                }
+            }, 1000)
+        };
+    }
+
+    function stopLocalVisualTimer(projectId, updatedProject) {
+        stopLocalVisualDisplay(projectId);
+
+        // Оновлення даних у таблиці
+        const minutesCell = document.getElementById(`minutes-${projectId}`);
+        const displayCell = document.getElementById(`display-time-${projectId}`);
+        const costCell = document.getElementById(`cost-${projectId}`);
+
+        if (minutesCell) minutesCell.innerText = updatedProject.totalMinutes;
+        if (displayCell) displayCell.innerText = formatMinutes(updatedProject.totalMinutes);
+        if (costCell) {
+            const earned = (updatedProject.totalMinutes / 60) * (updatedProject.hourlyRate || 0);
+            costCell.innerText = earned.toFixed(2);
+        }
+
+        updateDashboard();
+    }
+
+    function stopLocalVisualDisplay(projectId) {
+        if (activeTimers[projectId]) {
+            clearInterval(activeTimers[projectId].intervalId);
+            delete activeTimers[projectId];
+        }
+        const display = document.getElementById(`timer-display-${projectId}`);
+        const startBtn = document.getElementById(`start-btn-${projectId}`);
+        const stopBtn = document.getElementById(`stop-btn-${projectId}`);
+
+        if (startBtn) startBtn.classList.remove('d-none');
+        if (stopBtn) stopBtn.classList.add('d-none');
+        if (display) {
+            display.innerText = '';
+            display.classList.remove('timer-active');
+        }
+    }
+
+    async function syncTimersWithServer() {
+        try {
+            const response = await fetch('/api/projects');
+            if (!response.ok) return;
+            const projects = await response.json();
+
+            projects.forEach(project => {
+                const isRunningOnServer = project.startTime !== null;
+                const isRunningLocally = !!activeTimers[project.id];
+
+                if (!isRunningOnServer && isRunningLocally) {
+                    stopLocalVisualDisplay(project.id);
+                } else if (isRunningOnServer && !isRunningLocally) {
+                    startLocalVisualTimer(project.id, new Date(project.startTime));
+                }
+            });
+        } catch (e) {
+            console.error("Синхронізація не вдалася", e);
+        }
+    }
 
     function formatMinutes(totalMinutes) {
         const h = Math.floor(totalMinutes / 60);
@@ -197,158 +313,39 @@
         return `${h}г ${m}хв`;
     }
 
-    async function startTimer(projectId) {
-
-        if (currentActiveProjectId !== null && currentActiveProjectId !== projectId) {
-            await stopTimer(currentActiveProjectId);
-        }
-
-        activeTimers[projectId] = {
-            startTime: new Date(),
-            intervalId: setInterval(() => updateDisplay(projectId), 1000)
-        };
-        currentActiveProjectId = projectId;
-
-        document.getElementById(`start-btn-${projectId}`).classList.add('d-none');
-        document.getElementById(`stop-btn-${projectId}`).classList.remove('d-none');
-
-        const display = document.getElementById(`timer-display-${projectId}`);
-        if (display) {
-            display.classList.add('timer-active');
-        }
-    }
-
-    function updateDisplay(projectId) {
-        const timerData = activeTimers[projectId];
-        if (!timerData) return;
-
-        const diffSeconds = Math.floor((new Date() - timerData.startTime) / 1000);
-        const mins = Math.floor(diffSeconds / 60);
-        const secs = diffSeconds % 60;
-
-        const display = document.getElementById(`timer-display-${projectId}`);
-        if (display) {
-            display.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
-    }
-
-    async function stopTimer(projectId) {
-        const timerData = activeTimers[projectId];
-        if (!timerData) return;
-
-        clearInterval(timerData.intervalId);
-
-        const diffMs = new Date() - timerData.startTime;
-        const minutesToAdd = Math.max(1, Math.round(diffMs / 60000));
-
-        try {
-            const response = await fetch(`/api/projects/${projectId}/add-time`, {
-                method: 'PATCH',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({minutes: minutesToAdd})
-            });
-
-            if (response.ok) {
-                const updatedProject = await response.json();
-                const minutesCell = document.getElementById(`minutes-${projectId}`);
-                const displayCell = document.getElementById(`display-time-${projectId}`);
-                const costCell = document.getElementById(`cost-${projectId}`);
-
-                if (minutesCell) {
-                    minutesCell.innerText = updatedProject.totalMinutes;
-                }
-
-                if (displayCell) {
-                    displayCell.innerText = formatMinutes(updatedProject.totalMinutes);
-                }
-
-                if (costCell) {
-                    const earned = (updatedProject.totalMinutes / 60) * updatedProject.hourlyRate;
-                    costCell.innerText = earned.toFixed(2);
-                }
-
-                updateDashboard();
-
-                const display = document.getElementById(`timer-display-${projectId}`);
-                if (display) {
-                    display.classList.remove('timer-active');
-                    display.innerText = '';
-                }
-
-            }
-        } catch (error) {
-            console.error('Ошибка сохранения:', error);
-        }
-
-        delete activeTimers[projectId];
-        if (currentActiveProjectId === projectId) {
-            currentActiveProjectId = null;
-        }
-
-        const startBtn = document.getElementById(`start-btn-${projectId}`);
-        const stopBtn = document.getElementById(`stop-btn-${projectId}`);
-        const display = document.getElementById(`timer-display-${projectId}`);
-
-        if (startBtn) startBtn.classList.remove('d-none');
-        if (stopBtn) stopBtn.classList.add('d-none');
-        if (display) display.innerText = '';
-    }
-
     async function updateDashboard() {
         try {
             const response = await fetch('/api/projects/stats');
             if (response.ok) {
                 const stats = await response.json();
-
                 document.getElementById('active-projects-count').innerText = stats.activeCount;
                 document.getElementById('completed-projects-count').innerText = stats.completedCount;
                 document.getElementById('total-hours-display').innerText = stats.totalHours;
                 document.getElementById('total-earnings-display').innerText = stats.totalEarnings;
             }
         } catch (error) {
-            console.error('Ошибка при обновлении статистики:', error);
+            console.error('Статистика не оновлена:', error);
         }
     }
 
     async function deleteProject(projectId) {
-        if (!confirm('Ви впевненні що хочете завершити цей проект?')) return;
-
+        if (!confirm('Ви впевнені, що хочете завершити цей проект?')) return;
         try {
-            const response = await fetch(`/api/projects/${projectId}`, {
-                method: 'DELETE'
-            });
-
+            const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
             if (response.ok) {
-
-                const row = document.getElementById(`project-row-${projectId}`);
-                const descRow = document.getElementById(`desc-${projectId}`);
-
-                if (row) row.remove();
-                if (descRow) descRow.remove();
-
-                if (currentActiveProjectId === projectId) {
-                    clearInterval(activeTimers[projectId]?.intervalId);
-                    delete activeTimers[projectId];
-                    currentActiveProjectId = null;
-                }
+                document.getElementById(`project-row-${projectId}`)?.remove();
+                document.getElementById(`desc-${projectId}`)?.remove();
                 updateDashboard();
-
-            } else {
-                alert('Помилка завершення проекту');
             }
         } catch (error) {
-            console.error('Помилка:', error);
+            console.error('Помилка видалення:', error);
         }
     }
 
     async function addTimeManual(projectId) {
-        const input = prompt("Введіть кількість хвилин, яку потрібно додати:");
+        const input = prompt("Введіть кількість хвилин:");
         const minutes = parseInt(input);
-
-        if (isNaN(minutes) || minutes <= 0) {
-            if (input !== null) alert("Будь ласка, введіть коректне число більше нуля.");
-            return;
-        }
+        if (isNaN(minutes) || minutes <= 0) return;
 
         try {
             const response = await fetch(`/api/projects/${projectId}/add-time`, {
@@ -356,31 +353,12 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({minutes: minutes})
             });
-
             if (response.ok) {
-                const updatedProject = await response.json();
-
-                // Оновлюємо хвилини в таблиці
-                const minutesCell = document.getElementById(`minutes-${projectId}`);
-                if (minutesCell) minutesCell.innerText = updatedProject.totalMinutes;
-
-                const displayCell = document.getElementById(`display-time-${projectId}`);
-                if (displayCell) displayCell.innerText = formatMinutes(updatedProject.totalMinutes);
-
-                // Оновлюємо вартість в таблиці
-                const costCell = document.getElementById(`cost-${projectId}`);
-                if (costCell) {
-                    const earned = (updatedProject.totalMinutes / 60) * updatedProject.hourlyRate;
-                    costCell.innerText = earned.toFixed(2);
-                }
-
-                // Оновлюємо загальну статистику зверху
-                updateDashboard();
-            } else {
-                alert("Помилка при збереженні часу.");
+                const updated = await response.json();
+                stopLocalVisualTimer(projectId, updated);
             }
         } catch (error) {
-            console.error('Ошибка:', error);
+            console.error('Помилка ручного вводу:', error);
         }
     }
 </script>

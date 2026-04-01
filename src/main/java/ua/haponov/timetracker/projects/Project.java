@@ -17,6 +17,7 @@ public class Project {
     private LocalDate deadline;
     private Double hourlyRate;
     private Long totalMinutes = 0L;
+    private java.time.LocalDateTime startTime;
     private String description;
     private boolean isCompleted = false;
 

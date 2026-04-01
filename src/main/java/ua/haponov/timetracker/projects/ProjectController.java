@@ -59,4 +59,35 @@ public class ProjectController {
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @PatchMapping("/{id}/start")
+    public ResponseEntity<Project> startTimer(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+        projectRepository.findAllByUser(currentUser).stream()
+                .filter(p -> p.getStartTime() != null && !p.getId().equals(id))
+                .forEach(p -> {
+                    long minutes = java.time.Duration.between(p.getStartTime(), java.time.LocalDateTime.now()).toMinutes();
+                    p.setTotalMinutes(p.getTotalMinutes() + (int) Math.max(1, minutes));
+                    p.setStartTime(null);
+                    projectRepository.save(p);
+                });
+
+        Project project = projectRepository.findById(id)
+                .filter(p -> p.getUser().getId().equals(currentUser.getId()))
+                .orElseThrow();
+        project.setStartTime(java.time.LocalDateTime.now());
+        return ResponseEntity.ok(projectRepository.save(project));
+    }
+
+    @PatchMapping("/{id}/stop")
+    public ResponseEntity<Project> stopTimer(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+        Project project = projectRepository.findById(id)
+                .filter(p -> p.getUser().getId().equals(currentUser.getId()))
+                .orElseThrow();
+        if (project.getStartTime() != null) {
+            long minutes = java.time.Duration.between(project.getStartTime(), java.time.LocalDateTime.now()).toMinutes();
+            project.setTotalMinutes(project.getTotalMinutes() + (int) Math.max(1, minutes));
+            project.setStartTime(null);
+        }
+        return ResponseEntity.ok(projectRepository.save(project));
+    }
 }
