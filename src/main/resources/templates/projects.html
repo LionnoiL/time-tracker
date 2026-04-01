@@ -1,15 +1,19 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<html xmlns:th="http://www.thymeleaf.org" lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Time Tracker - проекти</title>
+    <title>Time Tracker - Проекти</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .timer-active {
             color: #dc3545;
             font-weight: bold;
             animation: blink 1s infinite;
+        }
+
+        .btn-timer {
+            min-width: 80px;
         }
 
         @keyframes blink {
@@ -30,7 +34,7 @@
             <div class="card shadow-sm border-0 bg-primary text-white">
                 <div class="card-body text-center">
                     <h6 class="text-uppercase small fw-bold">Активні</h6>
-                    <h2 class="mb-0" th:text="${stats.activeCount}">0</h2>
+                    <h2 class="mb-0" id="active-projects-count" th:text="${stats.activeCount}">0</h2>
                 </div>
             </div>
         </div>
@@ -38,7 +42,7 @@
             <div class="card shadow-sm border-0 bg-secondary text-white">
                 <div class="card-body text-center">
                     <h6 class="text-uppercase small fw-bold">Виконані</h6>
-                    <h2 class="mb-0" th:text="${stats.completedCount}">0</h2>
+                    <h2 class="mb-0" id="completed-projects-count" th:text="${stats.completedCount}">0</h2>
                 </div>
             </div>
         </div>
@@ -69,7 +73,7 @@
                         <input type="text" th:field="*{name}" class="form-control" placeholder="Назва проекту" required>
                     </div>
                     <div class="col-md-3">
-                        <input type="date" th:field="*{deadline}" class="form-index-control form-control"
+                        <input type="date" th:field="*{deadline}" class="form-control"
                                title="Дедлайн">
                     </div>
                     <div class="col-md-3">
@@ -81,6 +85,10 @@
                     </div>
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-primary w-100">Додати</button>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <textarea th:field="*{description}" class="form-control" rows="2"
+                                  placeholder="Опис проекту (необов'язково)"></textarea>
                     </div>
                 </div>
             </form>
@@ -102,49 +110,92 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="project : ${projects}" th:id="'project-row-' + ${project.id}">
-                    <td th:text="${project.id}">1</td>
-                    <td th:text="${project.name}" class="fw-bold">Проект</td>
-                    <td th:text="${project.deadline != null ? project.deadline : '-'}">-</td>
-                    <td th:text="${(project.hourlyRate ?: 0) + ' грн'}">0 $</td>
-                    <td>
-                        <span class="badge bg-info text-dark">
-                            <span th:id="'minutes-' + ${project.id}" th:text="${project.totalMinutes ?: 0}">0</span> хв
-                        </span>
-                    </td>
-                    <td>
-                            <span class="fw-bold text-success">
-                                <span th:id="'cost-' + ${project.id}"
-                                      th:text="${#numbers.formatDecimal(project.getEarnedAmount(), 1, 2)}">0.00</span> грн
-                            </span>
-                    </td>
-                    <td class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <button class="btn btn-success btn-sm"
-                                    th:id="'start-btn-' + ${project.id}"
-                                    th:onclick="'startTimer(' + ${project.id} + ')'">Старт
+                <th:block th:each="project : ${projects}">
+                    <tr th:id="'project-row-' + ${project.id}">
+                        <td th:text="${project.id}">1</td>
+                        <td class="fw-bold">
+                            <span th:text="${project.name}">Проект</span>
+                            <button class="btn btn-link btn-sm p-0 ms-1 text-decoration-none"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    th:data-bs-target="'#desc-' + ${project.id}"
+                                    aria-expanded="false"
+                                    title="Показати опис">ℹ️
                             </button>
-                            <button class="btn btn-danger btn-sm d-none"
-                                    th:id="'stop-btn-' + ${project.id}"
-                                    th:onclick="'stopTimer(' + ${project.id} + ')'">Стоп
+                        </td>
+                        <td th:text="${project.deadline != null ? project.deadline : '-'}"
+                            th:classappend="${project.deadline != null and project.deadline.isBefore(T(java.time.LocalDate).now())} ? 'text-danger fw-bold' : ''">
+                        </td>
+                        <td th:text="${project.hourlyRate != null ? project.hourlyRate : 0} + ' грн'"></td>
+                        <td>
+                                <span class="badge bg-info text-dark">
+                                    <span th:id="'display-time-' + ${project.id}" 
+                                          th:text="${(project.totalMinutes / 60) + 'г ' + (project.totalMinutes % 60) + 'хв'}">0г 0хв</span>
+                                        <span class="d-none" th:id="'minutes-' + ${project.id}" th:text="${project.totalMinutes ?: 0}">0</span>
+                                    </span>
+                                <button class="btn btn-sm btn-outline-primary ms-1 py-0 px-1"
+                                        th:onclick="'addTimeManual(' + ${project.id} + ')'" title="Додати час вручну">+
                             </button>
-                            <span th:id="'timer-display-' + ${project.id}" class="ms-2 font-monospace"></span>
+                        </td>
+                        <td>
+                                <span class="fw-bold text-success">
+                                    <span th:id="'cost-' + ${project.id}"
+                                          th:text="${#numbers.formatDecimal(project.getEarnedAmount(), 1, 2)}">0.00</span> грн
+                                </span>
+                        </td>
+                        <td>
 
-                        </div>
-                        <button class="btn btn-outline-secondary btn-sm ms-3"
-                                th:onclick="'deleteProject(' + ${project.id} + ')'">Завершити
-                        </button>
-                    </td>
-                </tr>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <button class="btn btn-success btn-sm btn-timer"
+                                            th:id="'start-btn-' + ${project.id}"
+                                            th:onclick="'startTimer(' + ${project.id} + ')'">Старт
+                                    </button>
+                                    <button class="btn btn-danger btn-sm d-none btn-timer"
+                                            th:id="'stop-btn-' + ${project.id}"
+                                            th:onclick="'stopTimer(' + ${project.id} + ')'">Стоп
+                                    </button>
+
+
+                                    <span th:id="'timer-display-' + ${project.id}" class="ms-2 font-monospace"></span>
+
+                                </div>
+
+                                <button class="btn btn-outline-secondary btn-sm ms-3"
+                                        th:onclick="'deleteProject(' + ${project.id} + ')'">Завершити
+                                </button>
+
+                            </div>
+
+
+                        </td>
+                    </tr>
+                    <tr class="collapse bg-white" th:id="'desc-' + ${project.id}">
+                        <td colspan="7" class="py-3 px-4 border-start border-secondary border-1">
+                            <div class="text-muted small fw-bold text-uppercase mb-1">Опис проекту:</div>
+                            <div th:text="${project.description != null && !project.description.isEmpty() ? project.description : 'Опис відсутній'}">
+                                Зміст опису...
+                            </div>
+                        </td>
+                    </tr>
+                </th:block>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
     const activeTimers = {};
     let currentActiveProjectId = null;
+
+    function formatMinutes(totalMinutes) {
+        const h = Math.floor(totalMinutes / 60);
+        const m = totalMinutes % 60;
+        return `${h}г ${m}хв`;
+    }
 
     async function startTimer(projectId) {
 
@@ -160,6 +211,11 @@
 
         document.getElementById(`start-btn-${projectId}`).classList.add('d-none');
         document.getElementById(`stop-btn-${projectId}`).classList.remove('d-none');
+
+        const display = document.getElementById(`timer-display-${projectId}`);
+        if (display) {
+            display.classList.add('timer-active');
+        }
     }
 
     function updateDisplay(projectId) {
@@ -195,10 +251,15 @@
             if (response.ok) {
                 const updatedProject = await response.json();
                 const minutesCell = document.getElementById(`minutes-${projectId}`);
+                const displayCell = document.getElementById(`display-time-${projectId}`);
                 const costCell = document.getElementById(`cost-${projectId}`);
 
                 if (minutesCell) {
                     minutesCell.innerText = updatedProject.totalMinutes;
+                }
+
+                if (displayCell) {
+                    displayCell.innerText = formatMinutes(updatedProject.totalMinutes);
                 }
 
                 if (costCell) {
@@ -207,6 +268,13 @@
                 }
 
                 updateDashboard();
+
+                const display = document.getElementById(`timer-display-${projectId}`);
+                if (display) {
+                    display.classList.remove('timer-active');
+                    display.innerText = '';
+                }
+
             }
         } catch (error) {
             console.error('Ошибка сохранения:', error);
@@ -232,15 +300,10 @@
             if (response.ok) {
                 const stats = await response.json();
 
-                const activeEl = document.querySelector('.bg-primary h2');
-                const completedEl = document.querySelector('.bg-secondary h2');
-                const hoursEl = document.getElementById('total-hours-display');
-                const earningsEl = document.getElementById('total-earnings-display');
-
-                if (activeEl) activeEl.innerText = stats.activeCount;
-                if (completedEl) completedEl.innerText = stats.completedCount;
-                if (hoursEl) hoursEl.innerText = stats.totalHours;
-                if (earningsEl) earningsEl.innerText = stats.totalEarnings;
+                document.getElementById('active-projects-count').innerText = stats.activeCount;
+                document.getElementById('completed-projects-count').innerText = stats.completedCount;
+                document.getElementById('total-hours-display').innerText = stats.totalHours;
+                document.getElementById('total-earnings-display').innerText = stats.totalEarnings;
             }
         } catch (error) {
             console.error('Ошибка при обновлении статистики:', error);
@@ -258,7 +321,10 @@
             if (response.ok) {
 
                 const row = document.getElementById(`project-row-${projectId}`);
+                const descRow = document.getElementById(`desc-${projectId}`);
+
                 if (row) row.remove();
+                if (descRow) descRow.remove();
 
                 if (currentActiveProjectId === projectId) {
                     clearInterval(activeTimers[projectId]?.intervalId);
@@ -272,6 +338,49 @@
             }
         } catch (error) {
             console.error('Помилка:', error);
+        }
+    }
+
+    async function addTimeManual(projectId) {
+        const input = prompt("Введіть кількість хвилин, яку потрібно додати:");
+        const minutes = parseInt(input);
+
+        if (isNaN(minutes) || minutes <= 0) {
+            if (input !== null) alert("Будь ласка, введіть коректне число більше нуля.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/add-time`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({minutes: minutes})
+            });
+
+            if (response.ok) {
+                const updatedProject = await response.json();
+
+                // Оновлюємо хвилини в таблиці
+                const minutesCell = document.getElementById(`minutes-${projectId}`);
+                if (minutesCell) minutesCell.innerText = updatedProject.totalMinutes;
+
+                const displayCell = document.getElementById(`display-time-${projectId}`);
+                if (displayCell) displayCell.innerText = formatMinutes(updatedProject.totalMinutes);
+
+                // Оновлюємо вартість в таблиці
+                const costCell = document.getElementById(`cost-${projectId}`);
+                if (costCell) {
+                    const earned = (updatedProject.totalMinutes / 60) * updatedProject.hourlyRate;
+                    costCell.innerText = earned.toFixed(2);
+                }
+
+                // Оновлюємо загальну статистику зверху
+                updateDashboard();
+            } else {
+                alert("Помилка при збереженні часу.");
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
         }
     }
 </script>
