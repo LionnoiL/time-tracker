@@ -74,7 +74,7 @@ public class ProjectController {
         Project project = projectRepository.findById(id)
                 .filter(p -> p.getUser().getId().equals(currentUser.getId()))
                 .orElseThrow();
-        project.setStartTime(java.time.LocalDateTime.now());
+        project.setStartTime(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
         return ResponseEntity.ok(projectRepository.save(project));
     }
 
@@ -84,7 +84,7 @@ public class ProjectController {
                 .filter(p -> p.getUser().getId().equals(currentUser.getId()))
                 .orElseThrow();
         if (project.getStartTime() != null) {
-            long minutes = java.time.Duration.between(project.getStartTime(), java.time.LocalDateTime.now()).toMinutes();
+            long minutes = java.time.Duration.between(project.getStartTime(), java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)).toMinutes();
             project.setTotalMinutes(project.getTotalMinutes() + (int) Math.max(1, minutes));
             project.setStartTime(null);
         }

@@ -194,8 +194,11 @@
 
     window.onload = function() {
         document.querySelectorAll('[data-start-time]').forEach(row => {
-            const startTimeStr = row.getAttribute('data-start-time');
+            let startTimeStr = row.getAttribute('data-start-time');
             if (startTimeStr && startTimeStr !== "") {
+                if (!startTimeStr.includes('Z') && !startTimeStr.includes('+')) {
+                    startTimeStr += 'Z';
+                }
                 const projectId = row.id.replace('project-row-', '');
                 startLocalVisualTimer(projectId, new Date(startTimeStr));
             }
@@ -212,7 +215,11 @@
         const response = await fetch(`/api/projects/${projectId}/start`, { method: 'PATCH' });
         if (response.ok) {
             const project = await response.json();
-            startLocalVisualTimer(projectId, new Date(project.startTime));
+            let startTimeStr = project.startTime;
+            if (!startTimeStr.includes('Z') && !startTimeStr.includes('+')) {
+                startTimeStr += 'Z';
+            }
+            startLocalVisualTimer(projectId, new Date(startTimeStr));
             syncTimersWithServer(); 
             updateDashboard();
         }
