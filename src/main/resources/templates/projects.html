@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Tracker - проекти</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .timer-active {
+            color: #dc3545;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <h1 class="mb-4 text-center">Управіння проектами</h1>
+
+    <!-- Дашборд статистики -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-primary text-white">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase small fw-bold">Активні</h6>
+                    <h2 class="mb-0" th:text="${stats.activeCount}">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-secondary text-white">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase small fw-bold">Виконані</h6>
+                    <h2 class="mb-0" th:text="${stats.completedCount}">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-success text-white">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase small fw-bold">Загальний час</h6>
+                    <h2 class="mb-0"><span id="total-hours-display" th:text="${stats.totalHours}">0</span> год</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-dark text-white">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase small fw-bold">Дохід (загалом)</h6>
+                    <h2 class="mb-0"><span id="total-earnings-display" th:text="${stats.totalEarnings}">0</span> грн
+                    </h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form th:action="@{/projects/add}" th:object="${newProject}" method="post">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" th:field="*{name}" class="form-control" placeholder="Назва проекту" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" th:field="*{deadline}" class="form-index-control form-control"
+                               title="Дедлайн">
+                    </div>
+                    <div class="col-md-3">
+                        <div class="input-group">
+                            <span class="input-group-text">грн</span>
+                            <input type="number" step="0.01" th:field="*{hourlyRate}" class="form-control"
+                                   placeholder="Плата за годину">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">Додати</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Назва</th>
+                    <th>Дедлайн</th>
+                    <th>Ставка</th>
+                    <th>Час</th>
+                    <th>Вартість</th>
+                    <th class="text-center">Дії</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="project : ${projects}" th:id="'project-row-' + ${project.id}">
+                    <td th:text="${project.id}">1</td>
+                    <td th:text="${project.name}" class="fw-bold">Проект</td>
+                    <td th:text="${project.deadline != null ? project.deadline : '-'}">-</td>
+                    <td th:text="${(project.hourlyRate ?: 0) + ' грн'}">0 $</td>
+                    <td>
+                        <span class="badge bg-info text-dark">
+                            <span th:id="'minutes-' + ${project.id}" th:text="${project.totalMinutes ?: 0}">0</span> хв
+                        </span>
+                    </td>
+                    <td>
+                            <span class="fw-bold text-success">
+                                <span th:id="'cost-' + ${project.id}"
+                                      th:text="${#numbers.formatDecimal(project.getEarnedAmount(), 1, 2)}">0.00</span> грн
+                            </span>
+                    </td>
+                    <td class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <button class="btn btn-success btn-sm"
+                                    th:id="'start-btn-' + ${project.id}"
+                                    th:onclick="'startTimer(' + ${project.id} + ')'">Старт
+                            </button>
+                            <button class="btn btn-danger btn-sm d-none"
+                                    th:id="'stop-btn-' + ${project.id}"
+                                    th:onclick="'stopTimer(' + ${project.id} + ')'">Стоп
+                            </button>
+                            <span th:id="'timer-display-' + ${project.id}" class="ms-2 font-monospace"></span>
+
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm ms-3"
+                                th:onclick="'deleteProject(' + ${project.id} + ')'">Завершити
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const activeTimers = {};
+    let currentActiveProjectId = null;
+
+    async function startTimer(projectId) {
+
+        if (currentActiveProjectId !== null && currentActiveProjectId !== projectId) {
+            await stopTimer(currentActiveProjectId);
+        }
+
+        activeTimers[projectId] = {
+            startTime: new Date(),
+            intervalId: setInterval(() => updateDisplay(projectId), 1000)
+        };
+        currentActiveProjectId = projectId;
+
+        document.getElementById(`start-btn-${projectId}`).classList.add('d-none');
+        document.getElementById(`stop-btn-${projectId}`).classList.remove('d-none');
+    }
+
+    function updateDisplay(projectId) {
+        const timerData = activeTimers[projectId];
+        if (!timerData) return;
+
+        const diffSeconds = Math.floor((new Date() - timerData.startTime) / 1000);
+        const mins = Math.floor(diffSeconds / 60);
+        const secs = diffSeconds % 60;
+
+        const display = document.getElementById(`timer-display-${projectId}`);
+        if (display) {
+            display.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+    }
+
+    async function stopTimer(projectId) {
+        const timerData = activeTimers[projectId];
+        if (!timerData) return;
+
+        clearInterval(timerData.intervalId);
+
+        const diffMs = new Date() - timerData.startTime;
+        const minutesToAdd = Math.max(1, Math.round(diffMs / 60000));
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/add-time`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({minutes: minutesToAdd})
+            });
+
+            if (response.ok) {
+                const updatedProject = await response.json();
+                const minutesCell = document.getElementById(`minutes-${projectId}`);
+                const costCell = document.getElementById(`cost-${projectId}`);
+
+                if (minutesCell) {
+                    minutesCell.innerText = updatedProject.totalMinutes;
+                }
+
+                if (costCell) {
+                    const earned = (updatedProject.totalMinutes / 60) * updatedProject.hourlyRate;
+                    costCell.innerText = earned.toFixed(2);
+                }
+
+                updateDashboard();
+            }
+        } catch (error) {
+            console.error('Ошибка сохранения:', error);
+        }
+
+        delete activeTimers[projectId];
+        if (currentActiveProjectId === projectId) {
+            currentActiveProjectId = null;
+        }
+
+        const startBtn = document.getElementById(`start-btn-${projectId}`);
+        const stopBtn = document.getElementById(`stop-btn-${projectId}`);
+        const display = document.getElementById(`timer-display-${projectId}`);
+
+        if (startBtn) startBtn.classList.remove('d-none');
+        if (stopBtn) stopBtn.classList.add('d-none');
+        if (display) display.innerText = '';
+    }
+
+    async function updateDashboard() {
+        try {
+            const response = await fetch('/api/projects/stats');
+            if (response.ok) {
+                const stats = await response.json();
+
+                const activeEl = document.querySelector('.bg-primary h2');
+                const completedEl = document.querySelector('.bg-secondary h2');
+                const hoursEl = document.getElementById('total-hours-display');
+                const earningsEl = document.getElementById('total-earnings-display');
+
+                if (activeEl) activeEl.innerText = stats.activeCount;
+                if (completedEl) completedEl.innerText = stats.completedCount;
+                if (hoursEl) hoursEl.innerText = stats.totalHours;
+                if (earningsEl) earningsEl.innerText = stats.totalEarnings;
+            }
+        } catch (error) {
+            console.error('Ошибка при обновлении статистики:', error);
+        }
+    }
+
+    async function deleteProject(projectId) {
+        if (!confirm('Ви впевненні що хочете завершити цей проект?')) return;
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+
+                const row = document.getElementById(`project-row-${projectId}`);
+                if (row) row.remove();
+
+                if (currentActiveProjectId === projectId) {
+                    clearInterval(activeTimers[projectId]?.intervalId);
+                    delete activeTimers[projectId];
+                    currentActiveProjectId = null;
+                }
+                updateDashboard();
+
+            } else {
+                alert('Помилка завершення проекту');
+            }
+        } catch (error) {
+            console.error('Помилка:', error);
+        }
+    }
+</script>
+</body>
+</html>
