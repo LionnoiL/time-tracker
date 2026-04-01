@@ -208,19 +208,9 @@
     };
 
     async function startTimer(projectId) {
-        Object.keys(activeTimers).forEach(id => {
-            if (id != projectId) stopLocalVisualDisplay(id);
-        });
-
-        const response = await fetch(`/api/projects/${projectId}/start`, { method: 'PATCH' });
+      const response = await fetch(`/api/projects/${projectId}/start`, { method: 'PATCH' });
         if (response.ok) {
-            const project = await response.json();
-            let startTimeStr = project.startTime;
-            if (!startTimeStr.includes('Z') && !startTimeStr.includes('+')) {
-                startTimeStr += 'Z';
-            }
-            startLocalVisualTimer(projectId, new Date(startTimeStr));
-            syncTimersWithServer(); 
+            await syncTimersWithServer();
             updateDashboard();
         }
     }

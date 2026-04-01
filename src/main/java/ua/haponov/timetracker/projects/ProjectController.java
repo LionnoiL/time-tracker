@@ -62,11 +62,13 @@ public class ProjectController {
 
     @PatchMapping("/{id}/start")
     public ResponseEntity<Project> startTimer(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+
         projectRepository.findAllByUser(currentUser).stream()
                 .filter(p -> p.getStartTime() != null && !p.getId().equals(id))
                 .forEach(p -> {
-                    long minutes = java.time.Duration.between(p.getStartTime(), java.time.LocalDateTime.now()).toMinutes();
-                    p.setTotalMinutes(p.getTotalMinutes() + (int) Math.max(1, minutes));
+                    long minutes = java.time.Duration.between(p.getStartTime(), now).toMinutes();
+                    p.setTotalMinutes(p.getTotalMinutes() + (int) minutes);
                     p.setStartTime(null);
                     projectRepository.save(p);
                 });
@@ -74,18 +76,21 @@ public class ProjectController {
         Project project = projectRepository.findById(id)
                 .filter(p -> p.getUser().getId().equals(currentUser.getId()))
                 .orElseThrow();
-        project.setStartTime(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
+        project.setStartTime(now);
         return ResponseEntity.ok(projectRepository.save(project));
     }
 
     @PatchMapping("/{id}/stop")
     public ResponseEntity<Project> stopTimer(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+
         Project project = projectRepository.findById(id)
                 .filter(p -> p.getUser().getId().equals(currentUser.getId()))
                 .orElseThrow();
+
         if (project.getStartTime() != null) {
-            long minutes = java.time.Duration.between(project.getStartTime(), java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)).toMinutes();
-            project.setTotalMinutes(project.getTotalMinutes() + (int) Math.max(1, minutes));
+            long minutes = java.time.Duration.between(project.getStartTime(), now).toMinutes();
+            project.setTotalMinutes(project.getTotalMinutes() + (int) minutes);
             project.setStartTime(null);
         }
         return ResponseEntity.ok(projectRepository.save(project));
