@@ -1,4 +1,4 @@
-package ua.haponov.timetracker;
+package ua.haponov.timetracker.projects;
 
 public record ProjectStats(
     long activeCount,

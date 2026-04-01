@@ -1,10 +1,8 @@
-package ua.haponov.timetracker;
+package ua.haponov.timetracker.projects;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
+import ua.haponov.timetracker.auth.User;
 
 import java.time.LocalDate;
 
@@ -21,6 +19,10 @@ public class Project {
     private Long totalMinutes = 0L;
     private String description;
     private boolean isCompleted = false;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
     public double getEarnedAmount() {
         if (totalMinutes == null || hourlyRate == null) return 0.0;

@@ -1,17 +1,19 @@
-package ua.haponov.timetracker;
+package ua.haponov.timetracker.projects;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import ua.haponov.timetracker.auth.User;
 
 import java.util.List;
 
 @Controller
-@RequestMapping("/projects")
+@RequestMapping("/")
 @RequiredArgsConstructor
 public class ProjectViewController {
 
@@ -19,8 +21,8 @@ public class ProjectViewController {
     private final ProjectStatsService projectStatsService;
 
     @GetMapping
-    public String listProjects(Model model) {
-        List<Project> allProjects = projectRepository.findAll();
+    public String listProjects(Model model, @AuthenticationPrincipal User currentUser) {
+        List<Project> allProjects = projectRepository.findAllByUser(currentUser);
 
         List<Project> activeProjects = allProjects.stream()
                 .filter(p -> !p.isCompleted())
@@ -36,8 +38,9 @@ public class ProjectViewController {
     }
 
     @PostMapping("/add")
-    public String addProject(@ModelAttribute Project project) {
+    public String addProject(@ModelAttribute Project project, @AuthenticationPrincipal User currentUser) {
+        project.setUser(currentUser);
         projectRepository.save(project);
-        return "redirect:/projects";
+        return "redirect:/";
     }
 }
