@@ -12,7 +12,7 @@
             animation: blink 1s infinite;
         }
 
-        .btn-timer {
+        .mw80 {
             min-width: 80px;
         }
 
@@ -112,13 +112,14 @@
                 <tbody>
                 <th:block th:each="project : ${projects}">
                     <tr th:id="'project-row-' + ${project.id}" 
-    th:data-start-time="${project.startTime}"> <!-- Додаємо час старту в атрибут -->
+    th:data-start-time="${project.startTime}">
                         <td th:text="${project.id}">1</td>
                         <td class="fw-bold">
                             <span th:text="${project.name}">Проект</span>
                             <button class="btn btn-link btn-sm p-0 ms-1 text-decoration-none"
                                     type="button"
                                     data-bs-toggle="collapse"
+                                    th:if="${project.description != null && !project.description.isEmpty()}"
                                     th:data-bs-target="'#desc-' + ${project.id}"
                                     aria-expanded="false"
                                     title="Показати опис">ℹ️
@@ -129,7 +130,7 @@
                         </td>
                         <td th:text="${project.hourlyRate != null ? project.hourlyRate : 0} + ' грн'"></td>
                         <td>
-                                <span class="badge bg-info text-dark">
+                                <span class="badge bg-info text-dark mw80">
                                     <span th:id="'display-time-' + ${project.id}" 
                                           th:text="${(project.totalMinutes / 60) + 'г ' + (project.totalMinutes % 60) + 'хв'}">0г 0хв</span>
                                         <span class="d-none" th:id="'minutes-' + ${project.id}" th:text="${project.totalMinutes ?: 0}">0</span>
@@ -149,12 +150,12 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <button th:classappend="${project.startTime != null} ? 'd-none' : ''"
-                                            class="btn btn-success btn-sm btn-timer"
+                                            class="btn btn-success btn-sm mw80"
                                             th:id="'start-btn-' + ${project.id}"
                                             th:onclick="'startTimer(' + ${project.id} + ')'">Старт
                                     </button>
                                     <button th:classappend="${project.startTime == null} ? 'd-none' : ''"
-                                            class="btn btn-danger btn-sm btn-timer"
+                                            class="btn btn-danger btn-sm mw80"
                                             th:id="'stop-btn-' + ${project.id}"
                                             th:onclick="'stopTimer(' + ${project.id} + ')'">Стоп
                                     </button>
