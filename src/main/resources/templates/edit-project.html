@@ -27,7 +27,9 @@
                                 <input type="date" th:field="*{deadline}" class="form-control">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Ставка (грн/год)</label>
+                                <label class="form-label" th:text="'Ставка (' + ${userSettings.currency} + '/год)'">
+                                    Ставка (грн/год)
+                                </label>
                                 <input type="number" step="0.01" th:field="*{hourlyRate}" class="form-control">
                             </div>
                         </div>
@@ -35,9 +37,11 @@
                         <div class="mb-3">
                             <label class="form-label">Затрачений час</label>
                             <div class="input-group" style="max-width: 300px;">
-                                <input type="number" name="editHours" th:value="${hours}" class="form-control" placeholder="0" min="0">
+                                <input type="number" name="editHours" th:value="${hours}" class="form-control"
+                                       placeholder="0" min="0">
                                 <span class="input-group-text">год</span>
-                                <input type="number" name="editMinutes" th:value="${minutes}" class="form-control" placeholder="0" min="0" max="59">
+                                <input type="number" name="editMinutes" th:value="${minutes}" class="form-control"
+                                       placeholder="0" min="0" max="59">
                                 <span class="input-group-text">хв</span>
                             </div>
                             <div class="form-text">Введіть загальну кількість накопиченого часу.</div>

@@ -1,16 +1,17 @@
 package ua.haponov.timetracker.auth;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import ua.haponov.timetracker.settings.UserSettings;
 
 import java.util.Collections;
 import java.util.List;
@@ -41,9 +42,12 @@ public class AuthController {
         String firstName = params.get("first_name");
 
         User user = userRepository.findByTelegramId(telegramId)
-                .orElseGet(() -> userRepository.save(
-                    new User(telegramId, firstName, params.get("last_name"), params.get("username"), params.get("photo_url"))
-                ));
+                .orElseGet(() -> {
+                    User newUser = new User(telegramId, firstName, params.get("last_name"), params.get("username"), params.get("photo_url"));
+                    newUser.setSettings(new UserSettings(newUser));
+                    userRepository.save(newUser);
+                    return newUser;
+                });
 
         List<SimpleGrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
         Authentication auth = new UsernamePasswordAuthenticationToken(user, null, authorities);

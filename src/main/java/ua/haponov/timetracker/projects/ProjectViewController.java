@@ -6,6 +6,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import ua.haponov.timetracker.auth.User;
+import ua.haponov.timetracker.settings.UserSettings;
+import ua.haponov.timetracker.settings.UserSettingsRepository;
 
 import java.util.List;
 
@@ -16,6 +18,7 @@ public class ProjectViewController {
 
     private final ProjectRepository projectRepository;
     private final ProjectStatsService projectStatsService;
+    private final UserSettingsRepository userSettingsRepository;
 
     @GetMapping
     public String listProjects(Model model, @AuthenticationPrincipal User currentUser) {
@@ -25,8 +28,14 @@ public class ProjectViewController {
                 .filter(p -> !p.isCompleted())
                 .toList();
 
+        UserSettings userSettings = userSettingsRepository.findByUser(currentUser).orElse(new UserSettings());
+
+        Project project = new Project();
+        project.setHourlyRate(userSettings.getDefaultHourlyRate());
+
         model.addAttribute("projects", activeProjects);
-        model.addAttribute("newProject", new Project());
+        model.addAttribute("newProject", project);
+        model.addAttribute("userSettings", userSettings);
 
         ProjectStats stats = projectStatsService.calculateStats(allProjects);
         model.addAttribute("stats", stats);
@@ -47,9 +56,13 @@ public class ProjectViewController {
                 .filter(p -> p.getUser().getId().equals(currentUser.getId()))
                 .orElseThrow(() -> new IllegalArgumentException("Проект не знайдено або доступ заборонено"));
 
+        UserSettings userSettings = userSettingsRepository.findByUser(currentUser).orElse(new UserSettings());
+
         model.addAttribute("project", project);
         model.addAttribute("hours", project.getTotalMinutes() / 60);
         model.addAttribute("minutes", project.getTotalMinutes() % 60);
+        model.addAttribute("userSettings", userSettings);
+
         return "edit-project";
     }
 

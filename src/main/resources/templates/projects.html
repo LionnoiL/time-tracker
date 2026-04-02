@@ -23,10 +23,27 @@
         }
     </style>
 </head>
-<body class="bg-light">
+<body>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="user-profile d-flex align-items-center">
+            <img th:if="${#authentication.principal.photoUrl}"
+                 th:src="${#authentication.principal.photoUrl}"
+                 class="rounded-circle me-2"
+                 style="width: 40px; height: 40px; object-fit: cover;"
+                 alt="User Photo">
+            <span class="fw-bold"
+                  th:text="${#authentication.principal.firstName + ' ' + (#authentication.principal.lastName ?: '')}">Имя пользователя</span>
+        </div>
+        <div>
+            <a href="/settings" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-gear"></i> Настройки
+            </a>
+            <a href="/logout" class="btn btn-outline-danger btn-sm ms-2">Выход</a>
+        </div>
+    </div>
 
-<div class="container mt-5">
-    <h1 class="mb-4 text-center">Управління проектами</h1>
+    <h1 class="mb-4">Мої проекти</h1>
 
     <!-- Дашборд статистики -->
     <div class="row mb-4">
@@ -58,7 +75,9 @@
             <div class="card shadow-sm border-0 bg-dark text-white">
                 <div class="card-body text-center">
                     <h6 class="text-uppercase small fw-bold">Дохід (загалом)</h6>
-                    <h2 class="mb-0"><span id="total-earnings-display" th:text="${stats.totalEarnings}">0</span> грн
+                    <h2 class="mb-0">
+                        <span id="total-earnings-display" th:text="${stats.totalEarnings}">0</span>
+                        <span th:text="${userSettings.currency}">грн</span>
                     </h2>
                 </div>
             </div>
@@ -78,7 +97,7 @@
                     </div>
                     <div class="col-md-3">
                         <div class="input-group">
-                            <span class="input-group-text">грн</span>
+                            <span class="input-group-text" th:text="${userSettings.currency}">грн</span>
                             <input type="number" step="0.01" th:field="*{hourlyRate}" class="form-control"
                                    placeholder="Плата за годину">
                         </div>
@@ -111,8 +130,8 @@
                 </thead>
                 <tbody>
                 <th:block th:each="project : ${projects}">
-                    <tr th:id="'project-row-' + ${project.id}" 
-    th:data-start-time="${project.startTime}">
+                    <tr th:id="'project-row-' + ${project.id}"
+                        th:data-start-time="${project.startTime}">
                         <td th:text="${project.id}">1</td>
                         <td class="fw-bold">
                             <span th:text="${project.name}">Проект</span>
@@ -128,21 +147,24 @@
                         <td th:text="${project.deadline != null ? project.deadline : '-'}"
                             th:classappend="${project.deadline != null and project.deadline.isBefore(T(java.time.LocalDate).now())} ? 'text-danger fw-bold' : ''">
                         </td>
-                        <td th:text="${project.hourlyRate != null ? project.hourlyRate : 0} + ' грн'"></td>
+                        <td th:text="${(project.hourlyRate != null ? project.hourlyRate : 0) + ' ' + userSettings.currency}"></td>
                         <td>
                                 <span class="badge bg-info text-dark mw80">
-                                    <span th:id="'display-time-' + ${project.id}" 
+                                    <span th:id="'display-time-' + ${project.id}"
                                           th:text="${(project.totalMinutes / 60) + 'г ' + (project.totalMinutes % 60) + 'хв'}">0г 0хв</span>
-                                        <span class="d-none" th:id="'minutes-' + ${project.id}" th:text="${project.totalMinutes ?: 0}">0</span>
+                                        <span class="d-none" th:id="'minutes-' + ${project.id}"
+                                              th:text="${project.totalMinutes ?: 0}">0</span>
                                     </span>
-                                <button class="btn btn-sm btn-outline-primary ms-1 py-0 px-1"
-                                        th:onclick="'addTimeManual(' + ${project.id} + ')'" title="Додати час вручну">+
+                            <button class="btn btn-sm btn-outline-primary ms-1 py-0 px-1"
+                                    th:onclick="'addTimeManual(' + ${project.id} + ')'" title="Додати час вручну">+
                             </button>
                         </td>
                         <td>
                                 <span class="fw-bold text-success">
                                     <span th:id="'cost-' + ${project.id}"
-                                          th:text="${#numbers.formatDecimal(project.getEarnedAmount(), 1, 2)}">0.00</span> грн
+                                          th:text="${#numbers.formatDecimal(project.getEarnedAmount(), 1, 2)}">0.00
+                                    </span>
+                                    <span th:text="${userSettings.currency}">грн</span>
                                 </span>
                         </td>
                         <td>
@@ -159,23 +181,23 @@
                                             th:id="'stop-btn-' + ${project.id}"
                                             th:onclick="'stopTimer(' + ${project.id} + ')'">Стоп
                                     </button>
-                                    <span th:id="'timer-display-' + ${project.id}" 
+                                    <span th:id="'timer-display-' + ${project.id}"
                                           th:classappend="${project.startTime != null} ? 'timer-active' : ''"
                                           class="ms-2 font-monospace"></span>
-                                    </div>
-
-                                    <div class="d-flex align-items-center">
-                                        <a th:href="@{/edit/{id}(id=${project.id})}" 
-                                           class="btn btn-outline-primary btn-sm ms-2" 
-                                           title="Редагувати">
-                                            ✏️
-                                        </a>
-                                        <button class="btn btn-outline-secondary btn-sm ms-2"
-                                                th:onclick="'deleteProject(' + ${project.id} + ')'">Завершити
-                                        </button>
-                                    </div>
-
                                 </div>
+
+                                <div class="d-flex align-items-center">
+                                    <a th:href="@{/edit/{id}(id=${project.id})}"
+                                       class="btn btn-outline-primary btn-sm ms-2"
+                                       title="Редагувати">
+                                        ✏️
+                                    </a>
+                                    <button class="btn btn-outline-secondary btn-sm ms-2"
+                                            th:onclick="'deleteProject(' + ${project.id} + ')'">Завершити
+                                    </button>
+                                </div>
+
+                            </div>
 
 
                         </td>
@@ -200,7 +222,7 @@
 <script>
     const activeTimers = {};
 
-    window.onload = function() {
+    window.onload = function () {
         document.querySelectorAll('[data-start-time]').forEach(row => {
             let startTimeStr = row.getAttribute('data-start-time');
             if (startTimeStr && startTimeStr !== "") {
@@ -216,7 +238,7 @@
     };
 
     async function startTimer(projectId) {
-      const response = await fetch(`/api/projects/${projectId}/start`, { method: 'PATCH' });
+        const response = await fetch(`/api/projects/${projectId}/start`, {method: 'PATCH'});
         if (response.ok) {
             await syncTimersWithServer();
             updateDashboard();
@@ -224,7 +246,7 @@
     }
 
     async function stopTimer(projectId) {
-        const response = await fetch(`/api/projects/${projectId}/stop`, { method: 'PATCH' });
+        const response = await fetch(`/api/projects/${projectId}/stop`, {method: 'PATCH'});
         if (response.ok) {
             const updatedProject = await response.json();
             stopLocalVisualTimer(projectId, updatedProject);
@@ -290,20 +312,20 @@
         }
     }
 
-        async function syncTimersWithServer() {
-            try {
-                const response = await fetch('/api/projects');
-                if (!response.ok) return;
-                const projects = await response.json();
+    async function syncTimersWithServer() {
+        try {
+            const response = await fetch('/api/projects');
+            if (!response.ok) return;
+            const projects = await response.json();
 
-                projects.forEach(project => {
-                    const isRunningOnServer = project.startTime !== null;
-                    const isRunningLocally = !!activeTimers[project.id];
+            projects.forEach(project => {
+                const isRunningOnServer = project.startTime !== null;
+                const isRunningLocally = !!activeTimers[project.id];
 
-                    if (!isRunningOnServer && isRunningLocally) {
-                        stopLocalVisualTimer(project.id, project);
-                    } else if (isRunningOnServer && !isRunningLocally) {
-                        let startTimeStr = project.startTime;
+                if (!isRunningOnServer && isRunningLocally) {
+                    stopLocalVisualTimer(project.id, project);
+                } else if (isRunningOnServer && !isRunningLocally) {
+                    let startTimeStr = project.startTime;
                     if (!startTimeStr.includes('Z') && !startTimeStr.includes('+')) {
                         startTimeStr += 'Z';
                     }
@@ -339,7 +361,7 @@
     async function deleteProject(projectId) {
         if (!confirm('Ви впевнені, що хочете завершити цей проект?')) return;
         try {
-            const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+            const response = await fetch(`/api/projects/${projectId}`, {method: 'DELETE'});
             if (response.ok) {
                 document.getElementById(`project-row-${projectId}`)?.remove();
                 document.getElementById(`desc-${projectId}`)?.remove();
