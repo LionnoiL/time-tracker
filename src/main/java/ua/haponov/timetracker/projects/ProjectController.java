@@ -53,9 +53,25 @@ public class ProjectController {
         return projectRepository.findById(id)
                 .filter(project -> project.getUser().getId().equals(currentUser.getId()))
                 .map(project -> {
-                    project.setCompleted(true);
-                    projectRepository.save(project);
+                    projectRepository.delete(project);
                     return ResponseEntity.noContent().<Void>build();
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PatchMapping("/{id}/complete")
+    public ResponseEntity<Project> completeProject(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+        return projectRepository.findById(id)
+                .filter(p -> p.getUser().getId().equals(currentUser.getId()))
+                .map(project -> {
+                    if (project.getStartTime() != null) {
+                        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+                        long minutes = java.time.Duration.between(project.getStartTime(), now).toMinutes();
+                        project.setTotalMinutes(project.getTotalMinutes() + minutes);
+                        project.setStartTime(null);
+                    }
+                    project.setCompleted(true);
+                    return ResponseEntity.ok(projectRepository.save(project));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }

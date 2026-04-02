@@ -125,13 +125,25 @@
                     <th>Ставка</th>
                     <th>Час</th>
                     <th>Вартість</th>
-                    <th class="text-center">Дії</th>
+                    <th class="text-center">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="ms-2">Дії</span>
+                            <a th:href="@{/(showAll=${!showAll})}"
+                               th:classappend="${showAll} ? 'btn-light' : 'btn-outline-light'"
+                               class="btn btn-sm py-0 px-2 me-1"
+                               style="font-size: 0.75rem;"
+                               th:title="${showAll} ? 'Приховати завершені' : 'Показати всі'">
+                                <span th:text="${showAll} ? 'Сховати завершені' : 'Показати всі'">Показати всі</span>
+                            </a>
+                        </div>
+                    </th>
                 </tr>
                 </thead>
                 <tbody>
                 <th:block th:each="project : ${projects}">
                     <tr th:id="'project-row-' + ${project.id}"
-                        th:data-start-time="${project.startTime}">
+                        th:data-start-time="${project.startTime}"
+                        th:classappend="${project.isCompleted} ? 'table-light text-muted' : ''">
                         <td th:text="${project.id}">1</td>
                         <td class="fw-bold">
                             <span th:text="${project.name}">Проект</span>
@@ -184,24 +196,33 @@
                                     <span th:id="'timer-display-' + ${project.id}"
                                           th:classappend="${project.startTime != null} ? 'timer-active' : ''"
                                           class="ms-2 font-monospace"></span>
+                                    </div>
+                                    <div th:if="${project.isCompleted}" class="text-success fw-bold small text-uppercase">
+                                        Завершено ✅
+                                    </div>
+
+                                    <div class="d-flex align-items-center">
+                                        <a th:href="@{/edit/{id}(id=${project.id})}"
+                                           class="btn btn-outline-primary btn-sm ms-2"
+                                           title="Редагувати">
+                                            ✏️
+                                        </a>
+                                        <button th:if="${!project.isCompleted}"
+                                                class="btn btn-outline-secondary btn-sm ms-2"
+                                                th:onclick="'completeProject(' + ${project.id} + ')'"
+                                                title="Завершити проект">
+                                            ✅
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm ms-2"
+                                                th:onclick="'deleteProject(' + ${project.id} + ')'"
+                                                title="Видалити проект">
+                                            🗑️
+                                        </button>
+                                    </div>
+
                                 </div>
-
-                                <div class="d-flex align-items-center">
-                                    <a th:href="@{/edit/{id}(id=${project.id})}"
-                                       class="btn btn-outline-primary btn-sm ms-2"
-                                       title="Редагувати">
-                                        ✏️
-                                    </a>
-                                    <button class="btn btn-outline-secondary btn-sm ms-2"
-                                            th:onclick="'deleteProject(' + ${project.id} + ')'">Завершити
-                                    </button>
-                                </div>
-
-                            </div>
-
-
-                        </td>
-                    </tr>
+                            </td>
+                        </tr>
                     <tr class="collapse bg-white" th:id="'desc-' + ${project.id}">
                         <td colspan="7" class="py-3 px-4 border-start border-secondary border-1">
                             <div class="text-muted small fw-bold text-uppercase mb-1">Опис проекту:</div>
@@ -236,6 +257,7 @@
 
         setInterval(syncTimersWithServer, 10000);
     };
+    
 
     async function startTimer(projectId) {
         const response = await fetch(`/api/projects/${projectId}/start`, {method: 'PATCH'});
@@ -359,7 +381,7 @@
     }
 
     async function deleteProject(projectId) {
-        if (!confirm('Ви впевнені, що хочете завершити цей проект?')) return;
+        if (!confirm('Ви впевнені, що хочете ПОВНІСТЮ ВИДАЛИТИ цей проект? Цю дію неможливо скасувати.')) return;
         try {
             const response = await fetch(`/api/projects/${projectId}`, {method: 'DELETE'});
             if (response.ok) {
@@ -369,6 +391,24 @@
             }
         } catch (error) {
             console.error('Помилка видалення:', error);
+        }
+    }
+
+    async function completeProject(projectId) {
+        if (!confirm('Ви впевнені, що хочете позначити цей проект як завершений?')) return;
+        try {
+            const response = await fetch(`/api/projects/${projectId}/complete`, {method: 'PATCH'});
+            if (response.ok) {
+                if (window.location.search.includes('showAll=true')) {
+                    location.reload(); // Перезавантажуємо щоб оновити стилі рядка
+                } else {
+                    document.getElementById(`project-row-${projectId}`)?.remove();
+                    document.getElementById(`desc-${projectId}`)?.remove();
+                }
+                updateDashboard();
+            }
+        } catch (error) {
+            console.error('Помилка завершення проекту:', error);
         }
     }
 

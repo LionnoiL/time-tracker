@@ -21,21 +21,28 @@ public class ProjectViewController {
     private final UserSettingsRepository userSettingsRepository;
 
     @GetMapping
-    public String listProjects(Model model, @AuthenticationPrincipal User currentUser) {
+    public String listProjects(Model model, @AuthenticationPrincipal User currentUser,
+                               @RequestParam(value = "showAll", required = false, defaultValue = "false") boolean showAll) {
         List<Project> allProjects = projectRepository.findAllByUser(currentUser);
+        List<Project> projects;
 
-        List<Project> activeProjects = allProjects.stream()
-                .filter(p -> !p.isCompleted())
-                .toList();
+        if (!showAll) {
+            projects = allProjects.stream()
+                    .filter(p -> !p.isCompleted())
+                    .toList();
+        } else {
+            projects = allProjects;
+        }
 
         UserSettings userSettings = userSettingsRepository.findByUser(currentUser).orElse(new UserSettings());
 
         Project project = new Project();
         project.setHourlyRate(userSettings.getDefaultHourlyRate());
 
-        model.addAttribute("projects", activeProjects);
+        model.addAttribute("projects", projects);
         model.addAttribute("newProject", project);
         model.addAttribute("userSettings", userSettings);
+        model.addAttribute("showAll", showAll);
 
         ProjectStats stats = projectStatsService.calculateStats(allProjects);
         model.addAttribute("stats", stats);
