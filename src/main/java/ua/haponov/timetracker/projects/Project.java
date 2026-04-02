@@ -18,6 +18,8 @@ public class Project {
     private Double hourlyRate;
     private Long totalMinutes = 0L;
     private java.time.LocalDateTime startTime;
+
+    @Column(length = 2000)
     private String description;
     private boolean isCompleted = false;
 
