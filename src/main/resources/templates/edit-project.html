@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Редагування проекту</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Редагування проекту</h4>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/edit/{id}(id=${project.id})}" th:object="${project}" method="post">
+                        <div class="mb-3">
+                            <label class="form-label">Назва проекту</label>
+                            <input type="text" th:field="*{name}" class="form-control" required>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Дедлайн</label>
+                                <input type="date" th:field="*{deadline}" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ставка (грн/год)</label>
+                                <input type="number" step="0.01" th:field="*{hourlyRate}" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Затрачений час</label>
+                            <div class="input-group" style="max-width: 300px;">
+                                <input type="number" name="editHours" th:value="${hours}" class="form-control" placeholder="0" min="0">
+                                <span class="input-group-text">год</span>
+                                <input type="number" name="editMinutes" th:value="${minutes}" class="form-control" placeholder="0" min="0" max="59">
+                                <span class="input-group-text">хв</span>
+                            </div>
+                            <div class="form-text">Введіть загальну кількість накопиченого часу.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Опис</label>
+                            <textarea th:field="*{description}" class="form-control" rows="4"></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="/" class="btn btn-outline-secondary">Скасувати</a>
+                            <button type="submit" class="btn btn-primary">Зберегти зміни</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
