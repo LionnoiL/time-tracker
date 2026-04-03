@@ -33,13 +33,13 @@
                  style="width: 40px; height: 40px; object-fit: cover;"
                  alt="User Photo">
             <span class="fw-bold"
-                  th:text="${#authentication.principal.firstName + ' ' + (#authentication.principal.lastName ?: '')}">Имя пользователя</span>
+                  th:text="${#authentication.principal.firstName + ' ' + (#authentication.principal.lastName ?: '')}">Им'я користувача</span>
         </div>
         <div>
             <a href="/settings" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-gear"></i> Настройки
+                <i class="bi bi-gear"></i> Налаштування
             </a>
-            <a href="/logout" class="btn btn-outline-danger btn-sm ms-2">Выход</a>
+            <a href="/logout" class="btn btn-outline-danger btn-sm ms-2">Вихід</a>
         </div>
     </div>
 
@@ -238,12 +238,34 @@
     </div>
 </div>
 
+
+
+    <div class="modal fade" id="universalModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Підтвердження</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="modalMessage"></p>
+                    <input type="number" id="modalInput" class="form-control d-none" placeholder="Введіть значення">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                    <button type="button" class="btn btn-primary" id="modalConfirmBtn">Підтвердити</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<script>
+    <script>
     const activeTimers = {};
 
     window.onload = function () {
+        bootstrapModal = new bootstrap.Modal(document.getElementById('universalModal'));
         document.querySelectorAll('[data-start-time]').forEach(row => {
             let startTimeStr = row.getAttribute('data-start-time');
             if (startTimeStr && startTimeStr !== "") {
@@ -257,7 +279,36 @@
 
         setInterval(syncTimersWithServer, 10000);
     };
-    
+
+    function showConfirm(title, message, isInput = false) {
+        return new Promise((resolve) => {
+            const modalEl = document.getElementById('universalModal');
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = message;
+
+            const input = document.getElementById('modalInput');
+            if (isInput) {
+                input.classList.remove('d-none');
+                input.value = '';
+            } else {
+                input.classList.add('d-none');
+            }
+
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            newConfirmBtn.onclick = () => {
+                const value = isInput ? input.value : true;
+                bootstrapModal.hide();
+                resolve(value);
+            };
+
+            modalEl.addEventListener('hidden.bs.modal', () => resolve(null), { once: true });
+            bootstrapModal.show();
+        });
+    }
 
     async function startTimer(projectId) {
         const response = await fetch(`/api/projects/${projectId}/start`, {method: 'PATCH'});
@@ -381,7 +432,8 @@
     }
 
     async function deleteProject(projectId) {
-        if (!confirm('Ви впевнені, що хочете ПОВНІСТЮ ВИДАЛИТИ цей проект? Цю дію неможливо скасувати.')) return;
+        const confirmed = await showConfirm('Видалення', 'Ви впевнені, що хочете ПОВНІСТЮ ВИДАЛИТИ цей проект? Цю дію неможливо скасувати.');
+        if (!confirmed) return;
         try {
             const response = await fetch(`/api/projects/${projectId}`, {method: 'DELETE'});
             if (response.ok) {
@@ -395,12 +447,13 @@
     }
 
     async function completeProject(projectId) {
-        if (!confirm('Ви впевнені, що хочете позначити цей проект як завершений?')) return;
+        const confirmed = await showConfirm('Завершення', 'Ви впевнені, що хочете позначити цей проект як завершений?');
+        if (!confirmed) return;
         try {
             const response = await fetch(`/api/projects/${projectId}/complete`, {method: 'PATCH'});
             if (response.ok) {
                 if (window.location.search.includes('showAll=true')) {
-                    location.reload(); // Перезавантажуємо щоб оновити стилі рядка
+                    location.reload();
                 } else {
                     document.getElementById(`project-row-${projectId}`)?.remove();
                     document.getElementById(`desc-${projectId}`)?.remove();
@@ -413,7 +466,7 @@
     }
 
     async function addTimeManual(projectId) {
-        const input = prompt("Введіть кількість хвилин:");
+        const input = await showConfirm('Додати час', 'Введіть кількість хвилин:', true);
         const minutes = parseInt(input);
         if (isNaN(minutes) || minutes <= 0) return;
 
@@ -431,6 +484,7 @@
             console.error('Помилка ручного вводу:', error);
         }
     }
+
 </script>
 </body>
 </html>
