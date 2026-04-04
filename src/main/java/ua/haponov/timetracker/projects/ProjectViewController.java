@@ -73,6 +73,15 @@ public class ProjectViewController {
         return "edit-project";
     }
 
+    @GetMapping("/projects/{id}/sessions")
+    public String projectSessionsPage(@PathVariable Long id, Model model, @AuthenticationPrincipal User currentUser) {
+        Project project = projectRepository.findById(id)
+                .filter(p -> p.getUser().getId().equals(currentUser.getId()))
+                .orElseThrow(() -> new IllegalArgumentException("Project not found"));
+        model.addAttribute("project", project);
+        return "project-sessions";
+    }
+
     @PostMapping("/edit/{id}")
     public String updateProject(@PathVariable Long id,
                                 @ModelAttribute Project projectDetails,

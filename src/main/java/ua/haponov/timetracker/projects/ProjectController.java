@@ -16,11 +16,20 @@ public class ProjectController {
 
     private final ProjectRepository projectRepository;
     private final ProjectStatsService projectStatsService;
+    private final ProjectSessionRepository projectSessionRepository;
 
     @GetMapping("/stats")
     public ProjectStats getStats(@AuthenticationPrincipal User currentUser) {
         List<Project> all = projectRepository.findAllByUser(currentUser);
         return projectStatsService.calculateStats(all);
+    }
+
+    @GetMapping("/{id}/sessions")
+    public ResponseEntity<List<ProjectSession>> getProjectSessions(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
+        return projectRepository.findById(id)
+                .filter(p -> p.getUser().getId().equals(currentUser.getId()))
+                .map(p -> ResponseEntity.ok(projectSessionRepository.findAllByProjectIdOrderByStartTimeDesc(p.getId())))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping
@@ -66,9 +75,7 @@ public class ProjectController {
                 .map(project -> {
                     if (project.getStartTime() != null) {
                         java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
-                        long minutes = java.time.Duration.between(project.getStartTime(), now).toMinutes();
-                        project.setTotalMinutes(project.getTotalMinutes() + minutes);
-                        project.setStartTime(null);
+                        stopProjectAndSaveSession(project, now);
                     }
                     project.setCompleted(true);
                     return ResponseEntity.ok(projectRepository.save(project));
@@ -82,16 +89,12 @@ public class ProjectController {
 
         projectRepository.findAllByUser(currentUser).stream()
                 .filter(p -> p.getStartTime() != null && !p.getId().equals(id))
-                .forEach(p -> {
-                    long minutes = java.time.Duration.between(p.getStartTime(), now).toMinutes();
-                    p.setTotalMinutes(p.getTotalMinutes() + (int) minutes);
-                    p.setStartTime(null);
-                    projectRepository.save(p);
-                });
+                .forEach(p -> stopProjectAndSaveSession(p, now));
 
         Project project = projectRepository.findById(id)
                 .filter(p -> p.getUser().getId().equals(currentUser.getId()))
                 .orElseThrow();
+
         project.setStartTime(now);
         return ResponseEntity.ok(projectRepository.save(project));
     }
@@ -105,10 +108,20 @@ public class ProjectController {
                 .orElseThrow();
 
         if (project.getStartTime() != null) {
-            long minutes = java.time.Duration.between(project.getStartTime(), now).toMinutes();
-            project.setTotalMinutes(project.getTotalMinutes() + (int) minutes);
-            project.setStartTime(null);
+            stopProjectAndSaveSession(project, now);
         }
         return ResponseEntity.ok(projectRepository.save(project));
+    }
+
+    private void stopProjectAndSaveSession(Project project, java.time.LocalDateTime endTime) {
+        long minutes = java.time.Duration.between(project.getStartTime(), endTime).toMinutes();
+
+        ProjectSession session = new ProjectSession(project, project.getStartTime());
+        session.setEndTime(endTime);
+        session.setDurationMinutes(minutes);
+        projectSessionRepository.save(session);
+
+        project.setTotalMinutes(project.getTotalMinutes() + minutes);
+        project.setStartTime(null);
     }
 }

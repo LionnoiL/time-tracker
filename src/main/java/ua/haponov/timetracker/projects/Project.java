@@ -5,6 +5,9 @@ import lombok.Data;
 import ua.haponov.timetracker.auth.User;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.ArrayList;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Data
 @Entity
@@ -22,6 +25,10 @@ public class Project {
     @Column(length = 2000)
     private String description;
     private boolean isCompleted = false;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProjectSession> sessions = new ArrayList<>();
 
     @ManyToOne
     @JoinColumn(name = "user_id")
