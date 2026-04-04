@@ -56,6 +56,19 @@
                                 </div>
 
                                 <div class="mb-3">
+                                    <label class="form-label">Затрачений час</label>
+                                    <div class="input-group" style="max-width: 300px;">
+                                        <input type="number" name="editHours" th:value="${hours}" class="form-control"
+                                               placeholder="0" min="0">
+                                        <span class="input-group-text">год</span>
+                                        <input type="number" name="editMinutes" th:value="${minutes}" class="form-control"
+                                               placeholder="0" min="0" max="59">
+                                        <span class="input-group-text">хв</span>
+                                    </div>
+                                    <div class="form-text">Введіть загальну кількість накопиченого часу.</div>
+                                </div>
+
+                                <div class="mb-3">
                                     <label class="form-label fw-bold">Опис</label>
                                     <textarea th:field="*{description}" class="form-control" rows="4" placeholder="Додайте деталі проекту..."></textarea>
                                 </div>
