@@ -15,6 +15,7 @@ public class ProjectStatsService {
                 .mapToLong(p -> p.getTotalMinutes() != null ? p.getTotalMinutes() : 0)
                 .sum();
         double earnings = all.stream()
+                .filter(p -> !p.isCompleted())
                 .mapToDouble(Project::getEarnedAmount)
                 .sum();
 
