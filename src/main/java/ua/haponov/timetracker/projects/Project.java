@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import ua.haponov.timetracker.auth.User;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
@@ -20,7 +21,7 @@ public class Project {
     private LocalDate deadline;
     private Double hourlyRate;
     private Long totalMinutes = 0L;
-    private java.time.LocalDateTime startTime;
+    private Instant startTime;
 
     @Column(length = 2000)
     private String description;

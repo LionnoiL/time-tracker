@@ -134,13 +134,18 @@
             }
 
             noMsg.classList.add('d-none');
-            tbody.innerHTML = sessions.map(s => `
-                <tr>
-                    <td>${new Date(s.startTime).toLocaleString('uk-UA')}</td>
-                    <td>${s.endTime ? new Date(s.endTime).toLocaleString('uk-UA') : '<span class="badge bg-success">Зараз у роботі</span>'}</td>
-                    <td class="text-end fw-bold">${s.durationMinutes || 0} хв</td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = sessions.map(s => {
+                    const startDate = new Date(s.startTime);
+                    const endDate = s.endTime ? new Date(s.endTime) : null;
+                    
+                    return `
+                    <tr>
+                        <td>${startDate.toLocaleString('uk-UA')}</td>
+                        <td>${endDate ? endDate.toLocaleString('uk-UA') : '<span class="badge bg-success">Зараз у роботі</span>'}</td>
+                        <td class="text-end fw-bold">${s.durationMinutes || 0} хв</td>
+                    </tr>
+                `}
+            ).join('');
             
             sessionsLoaded = true;
         } catch (error) {

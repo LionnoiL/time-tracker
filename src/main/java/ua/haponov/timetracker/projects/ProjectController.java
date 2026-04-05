@@ -6,6 +6,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import ua.haponov.timetracker.auth.User;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -74,7 +75,7 @@ public class ProjectController {
                 .filter(p -> p.getUser().getId().equals(currentUser.getId()))
                 .map(project -> {
                     if (project.getStartTime() != null) {
-                        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+                        Instant now = Instant.now();
                         stopProjectAndSaveSession(project, now);
                     }
                     project.setCompleted(true);
@@ -85,7 +86,7 @@ public class ProjectController {
 
     @PatchMapping("/{id}/start")
     public ResponseEntity<Project> startTimer(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
-        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+        Instant now = Instant.now();
 
         projectRepository.findAllByUser(currentUser).stream()
                 .filter(p -> p.getStartTime() != null && !p.getId().equals(id))
@@ -101,7 +102,7 @@ public class ProjectController {
 
     @PatchMapping("/{id}/stop")
     public ResponseEntity<Project> stopTimer(@PathVariable Long id, @AuthenticationPrincipal User currentUser) {
-        java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+        Instant now = Instant.now();
 
         Project project = projectRepository.findById(id)
                 .filter(p -> p.getUser().getId().equals(currentUser.getId()))
@@ -113,7 +114,7 @@ public class ProjectController {
         return ResponseEntity.ok(projectRepository.save(project));
     }
 
-    private void stopProjectAndSaveSession(Project project, java.time.LocalDateTime endTime) {
+    private void stopProjectAndSaveSession(Project project, Instant endTime) {
         long minutes = java.time.Duration.between(project.getStartTime(), endTime).toMinutes();
 
         ProjectSession session = new ProjectSession(project, project.getStartTime());

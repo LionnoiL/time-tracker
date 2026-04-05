@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Entity
@@ -18,11 +18,11 @@ public class ProjectSession {
     @JoinColumn(name = "project_id")
     private Project project;
 
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
+    private Instant startTime;
+    private Instant endTime;
     private Long durationMinutes;
 
-    public ProjectSession(Project project, LocalDateTime startTime) {
+    public ProjectSession(Project project, Instant startTime) {
         this.project = project;
         this.startTime = startTime;
     }
